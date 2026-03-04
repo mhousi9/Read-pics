@@ -270,16 +270,25 @@ async function startExtraction() {
 
   if (worker) { try { await worker.terminate(); } catch(e){} worker = null; }
 
+  // Show init progress in extract button
+  extractBtn.textContent = '⏳ Načítám engine...';
+
   try {
     worker = await Tesseract.createWorker(lang, 1, {
-      workerPath: 'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/worker.min.js',
-      corePath: 'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js-core/5.0.0/tesseract-core-simd-lstm.wasm.js',
-      langPath: 'https://tessdata.projectnaptha.com/4.0.0'
+      langPath: 'https://tessdata.projectnaptha.com/4.0.0_best',
+      cacheMethod: 'refresh'
     });
   } catch(e) {
-    // fallback - default CDN
-    worker = await Tesseract.createWorker(lang);
+    try {
+      worker = await Tesseract.createWorker(lang, 1, {
+        langPath: 'https://tessdata.projectnaptha.com/4.0.0'
+      });
+    } catch(e2) {
+      worker = await Tesseract.createWorker(lang);
+    }
   }
+
+  extractBtn.textContent = '▶ Extrahovat text';
 
   const total = files.length;
 
@@ -289,9 +298,7 @@ async function startExtraction() {
     updateItemUI(item);
 
     try {
-      const result = await worker.recognize(item.file, {}, {
-        imageColor: true
-      });
+      const result = await worker.recognize(item.file);
       item.progress = 100;
       item.text = (result.data.text || '').trim();
       if (!item.text) item.text = '(Na obrázku nebyl rozpoznán žádný text)';
